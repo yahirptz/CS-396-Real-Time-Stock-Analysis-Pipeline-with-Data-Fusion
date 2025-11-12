@@ -1,0 +1,4 @@
+﻿redis==5.0.1
+pandas==2.1.4
+yfinance==0.2.33
+apscheduler==3.10.4
