@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - stock-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  price-service:
+    build:
+      context: ./services/price
+      dockerfile: Dockerfile
+    container_name: price-service
+    environment:
+      - REDIS_HOST=redis
+    env_file:
+      - .env
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - stock-network
+    restart: unless-stopped
+
+  fundamental-service:
+    build:
+      context: ./services/fundamental
+      dockerfile: Dockerfile
+    container_name: fundamental-service
+    environment:
+      - REDIS_HOST=redis
+    env_file:
+      - .env
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - stock-network
+    restart: unless-stopped
+
+  analysis-service:
+    build:
+      context: ./services/analysis
+      dockerfile: Dockerfile
+    container_name: analysis-service
+    environment:
+      - REDIS_HOST=redis
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - "5000:5000"
+    networks:
+      - stock-network
+    restart: unless-stopped
+
+networks:
+  stock-network:
+    driver: bridge

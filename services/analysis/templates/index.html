@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Stock Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            background-color: black;
+            color: white;
+            font-family: Arial;
+            padding: 20px;
+        }
+        button {
+            padding: 10px;
+            margin: 5px;
+            font-size: 16px;
+        }
+        .metric {
+            border: 1px solid white;
+            padding: 10px;
+            margin: 10px;
+            display: inline-block;
+            width: 200px;
+        }
+        #priceChart {
+            background-color: white;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Stock Dashboard</h1>
+    
+    {% for ticker in tickers %}
+    <button onclick="loadStock('{{ ticker }}')">{{ ticker }}</button>
+    {% endfor %}
+
+    <div id="loading">Click a stock</div>
+    <div id="error" style="display:none; color:red;"></div>
+    
+    <div id="data" style="display:none;">
+        <div id="metrics"></div>
+        <canvas id="priceChart"></canvas>
+    </div>
+
+    <script>
+        let chart = null;
+
+        async function loadStock(ticker) {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('data').style.display = 'none';
+            
+            const res = await fetch('/api/stock/' + ticker);
+            const data = await res.json();
+            
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('data').style.display = 'block';
+            
+            document.getElementById('metrics').innerHTML = `
+                <div class="metric">Price: $${data.current_price.toFixed(2)}</div>
+                <div class="metric">SMA: $${data.sma_20.toFixed(2)}</div>
+                <div class="metric">Market Cap: $${(data.market_cap/1e9).toFixed(2)}B</div>
+                <div class="metric">P/E: ${data.pe_ratio ? data.pe_ratio.toFixed(2) : 'N/A'}</div>
+                <div class="metric">52W High: $${data.week_52_high.toFixed(2)}</div>
+                <div class="metric">52W Low: $${data.week_52_low.toFixed(2)}</div>
+            `;
+            
+            if (chart) chart.destroy();
+            
+            const ctx = document.getElementById('priceChart').getContext('2d');
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.prices.map((v, i) => i),
+                    datasets: [{
+                        label: 'Price',
+                        data: data.prices,
+                        borderColor: 'blue'
+                    }, {
+                        label: 'SMA',
+                        data: Array(data.prices.length).fill(data.sma_20),
+                        borderColor: 'red',
+                        borderDash: [5, 5]
+                    }]
+                }
+            });
+        }
+    </script>
+</body>
+</html>
